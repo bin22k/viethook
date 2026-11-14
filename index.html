@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VietHook — Localhost Payment Webhook Simulator</title>
+  <meta name="description" content="Giả lập & bắn thử nghiệm Webhook (SePay, Casso, PayOS) thẳng vào Localhost trong 1 click." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #090d16; color: #e2e8f0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    textarea::-webkit-scrollbar, pre::-webkit-scrollbar { width: 6px; height: 6px; }
+    textarea::-webkit-scrollbar-thumb, pre::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Navbar -->
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-10">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-slate-950 font-black text-lg shadow-lg shadow-emerald-500/20">
+          VH
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-white text-lg tracking-tight">VietHook</h1>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 mono">v1.0 • Client-Side</span>
+          </div>
+          <p class="text-xs text-slate-400">Giả lập Webhook thanh toán VN cho Localhost</p>
+        </div>
+      </div>
+      <button onclick="downloadLogo()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+        ⬇ Tải Logo (512px)
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="max-w-6xl w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+
+    <!-- Left Column: Configuration & Payload -->
+    <section class="lg:col-span-7 space-y-4">
+
+      <!-- Gateway Selector -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4">
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5">1. Chọn chuẩn cổng thanh toán</label>
+        <div class="grid grid-cols-4 gap-2" id="gatewayTabs">
+          <button data-gw="sepay" onclick="selectGateway('sepay')" class="gw-btn py-2 px-3 rounded-lg text-sm font-semibold border transition bg-emerald-500/15 border-emerald-500 text-emerald-300">SePay</button>
+          <button data-gw="casso" onclick="selectGateway('casso')" class="gw-btn py-2 px-3 rounded-lg text-sm font-semibold border transition bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700">Casso</button>
+          <button data-gw="payos" onclick="selectGateway('payos')" class="gw-btn py-2 px-3 rounded-lg text-sm font-semibold border transition bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700">PayOS</button>
+          <button data-gw="momo" onclick="selectGateway('momo')" class="gw-btn py-2 px-3 rounded-lg text-sm font-semibold border transition bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700">MoMo</button>
+        </div>
+      </div>
+
+      <!-- Endpoint & Auth -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3">
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">2. Endpoint đích & Xác thực</label>
+        <div class="flex gap-2">
+          <span class="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-sm mono flex items-center">POST</span>
+          <input id="targetUrl" type="text" value="http://localhost:3000/api/webhook" placeholder="http://localhost:3000/webhook"
+            class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 focus:border-emerald-500 focus:outline-none text-sm mono text-white" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Header Authorization / Secure-Token</label>
+            <input id="authHeader" type="text" value="Apikey sk_test_viethook_999" placeholder="Để trống nếu không dùng"
+              class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:outline-none text-xs mono text-slate-200" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">HMAC-SHA256 Secret Key (Tùy chọn)</label>
+            <input id="secretKey" type="text" placeholder="Tự ký header X-Signature"
+              class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:outline-none text-xs mono text-slate-200" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Data Override & JSON Editor -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">3. Tùy chỉnh nhanh & JSON Payload</label>
+          <button onclick="randomizeTx()" class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 transition">
+            🎲 Đổi mã GD mới
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Số tiền (VNĐ)</label>
+            <input id="quickAmount" type="number" value="50000" oninput="applyQuickFields()"
+              class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:outline-none text-sm mono text-emerald-400 font-semibold" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Nội dung chuyển khoản</label>
+            <input id="quickContent" type="text" value="NAPTIEN 10492" oninput="applyQuickFields()"
+              class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:outline-none text-sm mono text-white" />
+          </div>
+        </div>
+
+        <textarea id="payloadEditor" rows="13" spellcheck="false"
+          class="w-full p-3 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:outline-none text-xs mono text-slate-200 leading-relaxed"></textarea>
+
+        <div class="flex flex-wrap gap-2 pt-1">
+          <button id="sendBtn" onclick="sendWebhook()"
+            class="flex-1 py-2.5 px-4 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 transition cursor-pointer">
+            ⚡ Bắn Webhook Ngay
+          </button>
+          <button onclick="copyCurl()"
+            class="py-2.5 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 transition cursor-pointer">
+            📋 Copy cURL
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Response Inspector & cURL Preview -->
+    <section class="lg:col-span-5 space-y-4 flex flex-col">
+
+      <!-- Response Box -->
+      <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex-1 flex flex-col">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Kết quả phản hồi (Response)</span>
+          <div class="flex items-center gap-2">
+            <span id="latencyBadge" class="hidden text-xs mono text-slate-400">0 ms</span>
+            <span id="statusBadge" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 mono">Chưa gửi</span>
+          </div>
+        </div>
+
+        <pre id="responseOutput" class="flex-1 p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs mono text-slate-300 overflow-auto whitespace-pre-wrap min-h-[220px]">Nhấn "Bắn Webhook Ngay" để gửi request tới server của bạn.
+
+💡 Mẹo: Nếu server localhost chưa bật CORS, trình duyệt sẽ chặn fetch(). Khi đó hãy bấm "Copy cURL" và dán vào Terminal để bắn trực tiếp không qua trình duyệt.</pre>
+      </div>
+
+      <!-- Security & Architecture Note -->
+      <div class="bg-slate-900/40 border border-slate-800/80 rounded-xl p-4 text-xs text-slate-400 space-y-1.5">
+        <div class="font-semibold text-slate-300">🔒 Zero-Backend Privacy</div>
+        <p>Mọi request và chữ ký <span class="mono text-emerald-400">HMAC-SHA256</span> được xử lý trực tiếp tại trình duyệt thông qua Web Crypto API. Không có máy chủ trung gian lưu trữ URL hay Secret Key của bạn.</p>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    let currentGateway = 'sepay';
+    let txCounter = Math.floor(100000 + Math.random() * 900000);
+
+    function nowFormatted() {
+      const d = new Date();
+      return d.toISOString().replace('T', ' ').substring(0, 19);
+    }
+
+    function buildTemplate(gw, amount, content, txId) {
+      const templates = {
+        sepay: {
+          id: txId,
+          gateway: "MBBank",
+          transactionDate: nowFormatted(),
+          accountNumber: "0961123677",
+          code: null,
+          content: content,
+          transferType: "in",
+          transferAmount: Number(amount),
+          accumulated: Number(amount) + 150000,
+          subAccount: null,
+          referenceCode: "FT" + txId,
+          description: "BankAPINotify " + content
+        },
+        casso: {
+          error: 0,
+          data: [
+            {
+              id: txId,
+              tid: "FT" + txId,
+              description: content,
+              amount: Number(amount),
+              cusum_balance: Number(amount) + 250000,
+              when: nowFormatted(),
+              bank_sub_acc_id: "0961123677",
+              subAccId: "0961123677",
+              bankName: "MBBank"
+            }
+          ]
+        },
+        payos: {
+          code: "00",
+          desc: "success",
+          success: true,
+          data: {
+            orderCode: txId,
+            amount: Number(amount),
+            description: content,
+            accountNumber: "0961123677",
+            reference: "FT" + txId,
+            transactionDateTime: nowFormatted(),
+            currency: "VND",
+            paymentLinkId: "pl_" + txId,
+            code: "00",
+            desc: "Thành công"
+          }
+        },
+        momo: {
+          partnerCode: "MOMO_TEST",
+          orderId: "ORDER_" + txId,
+          requestId: "REQ_" + txId,
+          amount: Number(amount),
+          orderInfo: content,
+          orderType: "momo_wallet",
+          transId: txId * 10,
+          resultCode: 0,
+          message: "Thành công.",
+          payType: "qr",
+          responseTime: Date.now()
+        }
+      };
+      return templates[gw];
+    }
+
+    function selectGateway(gw) {
+      currentGateway = gw;
+      document.querySelectorAll('.gw-btn').forEach(btn => {
+        if (btn.dataset.gw === gw) {
+          btn.className = "gw-btn py-2 px-3 rounded-lg text-sm font-semibold border transition bg-emerald-500/15 border-emerald-500 text-emerald-300";
+        } else {
+          btn.className = "gw-btn py-2 px-3 rounded-lg text-sm font-semibold border transition bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700";
+        }
+      });
+
+      const authMap = {
+        sepay: "Apikey sk_test_sepay_999",
+        casso: "secure-token-casso-999",
+        payos: "",
+        momo: ""
+      };
+      document.getElementById('authHeader').value = authMap[gw];
+      applyQuickFields();
+    }
+
+    function applyQuickFields() {
+      const amount = document.getElementById('quickAmount').value || 0;
+      const content = document.getElementById('quickContent').value || "";
+      const obj = buildTemplate(currentGateway, amount, content, txCounter);
+      document.getElementById('payloadEditor').value = JSON.stringify(obj, null, 2);
+    }
+
+    function randomizeTx() {
+      txCounter = Math.floor(100000 + Math.random() * 900000);
+      applyQuickFields();
+    }
+
+    async function computeHmac(secret, message) {
+      const enc = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        "raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+      );
+      const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message));
+      return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function buildHeaders(rawBody) {
+      const headers = { "Content-Type": "application/json" };
+      const auth = document.getElementById('authHeader').value.trim();
+      const secret = document.getElementById('secretKey').value.trim();
+
+      if (auth) {
+        if (currentGateway === 'casso') {
+          headers["secure-token"] = auth;
+        } else {
+          headers["Authorization"] = auth;
+        }
+      }
+      if (secret) {
+        headers["X-Signature"] = await computeHmac(secret, rawBody);
+      }
+      return headers;
+    }
+
+    async function sendWebhook() {
+      const url = document.getElementById('targetUrl').value.trim();
+      const rawBody = document.getElementById('payloadEditor').value;
+      const statusBadge = document.getElementById('statusBadge');
+      const latencyBadge = document.getElementById('latencyBadge');
+      const output = document.getElementById('responseOutput');
+
+      try {
+        JSON.parse(rawBody);
+      } catch (err) {
+        statusBadge.textContent = "JSON Error";
+        statusBadge.className = "text-xs px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 mono";
+        output.textContent = "❌ Lỗi cú pháp JSON trong Payload:\n" + err.message;
+        return;
+      }
+
+      statusBadge.textContent = "Đang gửi...";
+      statusBadge.className = "text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 mono";
+
+      const headers = await buildHeaders(rawBody);
+      const t0 = performance.now();
+
+      try {
+        const res = await fetch(url, { method: "POST", headers, body: rawBody });
+        const ms = Math.round(performance.now() - t0);
+        const text = await res.text();
+
+        latencyBadge.textContent = ms + " ms";
+        latencyBadge.classList.remove("hidden");
+
+        statusBadge.textContent = res.status + " " + (res.statusText || "");
+        statusBadge.className = res.ok
+          ? "text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 mono"
+          : "text-xs px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 mono";
+
+        try {
+          output.textContent = JSON.stringify(JSON.parse(text), null, 2);
+        } catch {
+          output.textContent = text || "(Empty Response Body)";
+        }
+      } catch (err) {
+        const ms = Math.round(performance.now() - t0);
+        latencyBadge.textContent = ms + " ms";
+        latencyBadge.classList.remove("hidden");
+
+        statusBadge.textContent = "CORS / Network Blocked";
+        statusBadge.className = "text-xs px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 mono";
+        output.textContent =
+          "⚠️ Trình duyệt chặn kết nối tới: " + url + "\n\n" +
+          "Nguyên nhân thường gặp:\n" +
+          "1. Server Localhost chưa bật header 'Access-Control-Allow-Origin: *'.\n" +
+          "2. Trình duyệt chặn trang HTTPS gọi sang HTTP Localhost (Private Network Access).\n\n" +
+          "👉 Giải pháp nhanh: Bấm nút '📋 Copy cURL' bên cạnh và dán vào Terminal để bắn trực tiếp!";
+      }
+    }
+
+    async function copyCurl() {
+      const url = document.getElementById('targetUrl').value.trim();
+      const rawBody = document.getElementById('payloadEditor').value;
+      const headers = await buildHeaders(rawBody);
+
+      const lines = [`curl -X POST '${url}'`];
+      for (const [k, v] of Object.entries(headers)) {
+        lines.push(`-H '${k}: ${v}'`);
+      }
+      const escapedBody = rawBody.replace(/'/g, "'\\''");
+      lines.push(`-d '${escapedBody}'`);
+
+      await navigator.clipboard.writeText(lines.join(' \\\n  '));
+      const output = document.getElementById('responseOutput');
+      output.textContent = "✅ Đã copy lệnh cURL vào bộ nhớ tạm! Bạn có thể dán thẳng vào Terminal / Termux để test:\n\n" + lines.join(' \\\n  ');
+    }
+
+    function downloadLogo() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0, 0, 512, 512);
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(1, '#020617');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 512, 512);
+
+      const accent = ctx.createLinearGradient(96, 96, 416, 416);
+      accent.addColorStop(0, '#34d399');
+      accent.addColorStop(1, '#06b6d4');
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.roundRect(76, 76, 360, 360, 72);
+      ctx.fill();
+
+      ctx.fillStyle = '#020617';
+      ctx.font = '900 165px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('VH', 256, 268);
+
+      const link = document.createElement('a');
+      link.download = 'viethook-logo.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    // Init
+    selectGateway('sepay');
+  </script>
+</body>
+  </html>
+  
