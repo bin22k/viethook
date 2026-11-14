@@ -37,7 +37,7 @@
   </header>
 
   <!-- Main Workspace -->
-  <main class="max-w-6xl w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+  <main class="max-w-6xl w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start flex-1">
 
     <!-- Left Column: Configuration & Payload -->
     <section class="lg:col-span-7 space-y-4">
@@ -156,7 +156,7 @@
           id: txId,
           gateway: "MBBank",
           transactionDate: nowFormatted(),
-          accountNumber: "0961123677",
+          accountNumber: "0123456789",
           code: null,
           content: content,
           transferType: "in",
@@ -176,8 +176,8 @@
               amount: Number(amount),
               cusum_balance: Number(amount) + 250000,
               when: nowFormatted(),
-              bank_sub_acc_id: "0961123677",
-              subAccId: "0961123677",
+              bank_sub_acc_id: "0123456789",
+              subAccId: "0123456789",
               bankName: "MBBank"
             }
           ]
@@ -190,7 +190,7 @@
             orderCode: txId,
             amount: Number(amount),
             description: content,
-            accountNumber: "0961123677",
+            accountNumber: "0123456789",
             reference: "FT" + txId,
             transactionDateTime: nowFormatted(),
             currency: "VND",
@@ -384,5 +384,4 @@
     selectGateway('sepay');
   </script>
 </body>
-  </html>
-  
+</html>
