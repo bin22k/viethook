@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VietHook — Localhost Payment Webhook Simulator</title>
-  <meta name="description" content="Giả lập & bắn thử nghiệm Webhook (SePay, Casso, PayOS) thẳng vào Localhost trong 1 click." />
+  <meta name="description" content="Giả lập & bắn thử nghiệm Webhook (SePay, Casso, PayOS, MoMo) thẳng vào Localhost trong 1 click." />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background-color: #090d16; color: #e2e8f0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
@@ -25,12 +25,12 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-white text-lg tracking-tight">VietHook</h1>
-            <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 mono">v1.0 • Client-Side</span>
+            <span class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 mono">v1.1 • Client-Side</span>
           </div>
           <p class="text-xs text-slate-400">Giả lập Webhook thanh toán VN cho Localhost</p>
         </div>
       </div>
-      <button onclick="downloadLogo()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+      <button onclick="downloadLogo()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer">
         ⬇ Tải Logo (512px)
       </button>
     </div>
@@ -64,23 +64,26 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Header Authorization / Secure-Token</label>
-            <input id="authHeader" type="text" value="Apikey sk_test_viethook_999" placeholder="Để trống nếu không dùng"
+            <label id="authLabel" class="block text-xs text-slate-400 mb-1">Header Authorization / Secure-Token</label>
+            <input id="authHeader" type="text" value="Apikey sk_test_sepay_999" oninput="onKeyChange()" placeholder="Để trống nếu không dùng"
               class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:outline-none text-xs mono text-slate-200" />
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">HMAC-SHA256 Secret Key (Tùy chọn)</label>
-            <input id="secretKey" type="text" placeholder="Tự ký header X-Signature"
+            <label id="secretLabel" class="block text-xs text-slate-400 mb-1">HMAC-SHA256 Secret Key (Tùy chọn)</label>
+            <input id="secretKey" type="text" oninput="onKeyChange()" placeholder="Tự ký header X-Signature"
               class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:outline-none text-xs mono text-slate-200" />
           </div>
         </div>
+        <p id="sigHint" class="hidden text-[11px] text-cyan-400/90 mono">
+          ✓ Chế độ MoMo IPN v2: Tự động ghép 13 tham số (accessKey, amount, orderId...) và ký HMAC-SHA256 vào trường "signature".
+        </p>
       </div>
 
       <!-- Quick Data Override & JSON Editor -->
       <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">3. Tùy chỉnh nhanh & JSON Payload</label>
-          <button onclick="randomizeTx()" class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 transition">
+          <button onclick="randomizeTx()" class="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 transition cursor-pointer">
             🎲 Đổi mã GD mới
           </button>
         </div>
@@ -98,7 +101,7 @@
           </div>
         </div>
 
-        <textarea id="payloadEditor" rows="13" spellcheck="false"
+        <textarea id="payloadEditor" rows="14" spellcheck="false"
           class="w-full p-3 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:outline-none text-xs mono text-slate-200 leading-relaxed"></textarea>
 
         <div class="flex flex-wrap gap-2 pt-1">
@@ -114,10 +117,8 @@
       </div>
     </section>
 
-    <!-- Right Column: Response Inspector & cURL Preview -->
+    <!-- Right Column: Response Inspector -->
     <section class="lg:col-span-5 space-y-4 flex flex-col">
-
-      <!-- Response Box -->
       <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4 flex-1 flex flex-col">
         <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
           <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Kết quả phản hồi (Response)</span>
@@ -132,15 +133,12 @@
 💡 Mẹo: Nếu server localhost chưa bật CORS, trình duyệt sẽ chặn fetch(). Khi đó hãy bấm "Copy cURL" và dán vào Terminal để bắn trực tiếp không qua trình duyệt.</pre>
       </div>
 
-      <!-- Security & Architecture Note -->
       <div class="bg-slate-900/40 border border-slate-800/80 rounded-xl p-4 text-xs text-slate-400 space-y-1.5">
         <div class="font-semibold text-slate-300">🔒 Zero-Backend Privacy</div>
         <p>Mọi request và chữ ký <span class="mono text-emerald-400">HMAC-SHA256</span> được xử lý trực tiếp tại trình duyệt thông qua Web Crypto API. Không có máy chủ trung gian lưu trữ URL hay Secret Key của bạn.</p>
       </div>
-
     </section>
   </main>
-
   <script>
     let currentGateway = 'sepay';
     let txCounter = Math.floor(100000 + Math.random() * 900000);
@@ -210,10 +208,44 @@
           resultCode: 0,
           message: "Thành công.",
           payType: "qr",
-          responseTime: Date.now()
+          responseTime: Date.now(),
+          extraData: "",
+          signature: ""
         }
       };
       return templates[gw];
+    }
+
+    async function computeHmac(secret, message) {
+      const enc = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        "raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+      );
+      const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message));
+      return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function signMomoObject(obj) {
+      const accessKey = document.getElementById('authHeader').value.trim() || "access_key_test";
+      const secretKey = document.getElementById('secretKey').value.trim() || "secret_key_test";
+      const rawSignature = [
+        `accessKey=${accessKey}`,
+        `amount=${obj.amount ?? 0}`,
+        `extraData=${obj.extraData ?? ""}`,
+        `message=${obj.message ?? ""}`,
+        `orderId=${obj.orderId ?? ""}`,
+        `orderInfo=${obj.orderInfo ?? ""}`,
+        `orderType=${obj.orderType ?? ""}`,
+        `partnerCode=${obj.partnerCode ?? ""}`,
+        `payType=${obj.payType ?? ""}`,
+        `requestId=${obj.requestId ?? ""}`,
+        `responseTime=${obj.responseTime ?? ""}`,
+        `resultCode=${obj.resultCode ?? 0}`,
+        `transId=${obj.transId ?? ""}`
+      ].join('&');
+
+      obj.signature = await computeHmac(secretKey, rawSignature);
+      return obj;
     }
 
     function selectGateway(gw) {
@@ -226,21 +258,55 @@
         }
       });
 
-      const authMap = {
-        sepay: "Apikey sk_test_sepay_999",
-        casso: "secure-token-casso-999",
-        payos: "",
-        momo: ""
-      };
-      document.getElementById('authHeader').value = authMap[gw];
+      const authLabel = document.getElementById('authLabel');
+      const authInput = document.getElementById('authHeader');
+      const secretLabel = document.getElementById('secretLabel');
+      const secretInput = document.getElementById('secretKey');
+      const sigHint = document.getElementById('sigHint');
+
+      if (gw === 'momo') {
+        authLabel.textContent = "MoMo Access Key";
+        authInput.value = "access_key_test";
+        authInput.placeholder = "Nhập MoMo Access Key";
+        secretLabel.textContent = "MoMo Secret Key (Ký field signature)";
+        secretInput.value = "secret_key_test";
+        secretInput.placeholder = "Nhập MoMo Secret Key";
+        sigHint.classList.remove('hidden');
+      } else {
+        authLabel.textContent = "Header Authorization / Secure-Token";
+        secretLabel.textContent = "HMAC-SHA256 Secret Key (Tùy chọn)";
+        secretInput.value = "";
+        secretInput.placeholder = "Tự ký header X-Signature";
+        sigHint.classList.add('hidden');
+
+        const authMap = {
+          sepay: "Apikey sk_test_sepay_999",
+          casso: "secure-token-casso-999",
+          payos: ""
+        };
+        authInput.value = authMap[gw];
+      }
+
       applyQuickFields();
     }
 
-    function applyQuickFields() {
+    async function applyQuickFields() {
       const amount = document.getElementById('quickAmount').value || 0;
       const content = document.getElementById('quickContent').value || "";
-      const obj = buildTemplate(currentGateway, amount, content, txCounter);
+      let obj = buildTemplate(currentGateway, amount, content, txCounter);
+      if (currentGateway === 'momo') {
+        obj = await signMomoObject(obj);
+      }
       document.getElementById('payloadEditor').value = JSON.stringify(obj, null, 2);
+    }
+
+    async function onKeyChange() {
+      if (currentGateway !== 'momo') return;
+      try {
+        const obj = JSON.parse(document.getElementById('payloadEditor').value);
+        await signMomoObject(obj);
+        document.getElementById('payloadEditor').value = JSON.stringify(obj, null, 2);
+      } catch {}
     }
 
     function randomizeTx() {
@@ -248,17 +314,22 @@
       applyQuickFields();
     }
 
-    async function computeHmac(secret, message) {
-      const enc = new TextEncoder();
-      const key = await crypto.subtle.importKey(
-        "raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-      );
-      const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message));
-      return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    async function prepareFinalPayload() {
+      const rawBody = document.getElementById('payloadEditor').value;
+      const parsed = JSON.parse(rawBody);
+      if (currentGateway === 'momo') {
+        await signMomoObject(parsed);
+        const updated = JSON.stringify(parsed, null, 2);
+        document.getElementById('payloadEditor').value = updated;
+        return updated;
+      }
+      return rawBody;
     }
 
     async function buildHeaders(rawBody) {
       const headers = { "Content-Type": "application/json" };
+      if (currentGateway === 'momo') return headers;
+
       const auth = document.getElementById('authHeader').value.trim();
       const secret = document.getElementById('secretKey').value.trim();
 
@@ -277,13 +348,13 @@
 
     async function sendWebhook() {
       const url = document.getElementById('targetUrl').value.trim();
-      const rawBody = document.getElementById('payloadEditor').value;
       const statusBadge = document.getElementById('statusBadge');
       const latencyBadge = document.getElementById('latencyBadge');
       const output = document.getElementById('responseOutput');
 
+      let rawBody;
       try {
-        JSON.parse(rawBody);
+        rawBody = await prepareFinalPayload();
       } catch (err) {
         statusBadge.textContent = "JSON Error";
         statusBadge.className = "text-xs px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 mono";
@@ -333,7 +404,13 @@
 
     async function copyCurl() {
       const url = document.getElementById('targetUrl').value.trim();
-      const rawBody = document.getElementById('payloadEditor').value;
+      let rawBody;
+      try {
+        rawBody = await prepareFinalPayload();
+      } catch (err) {
+        document.getElementById('responseOutput').textContent = "❌ Lỗi cú pháp JSON:\n" + err.message;
+        return;
+      }
       const headers = await buildHeaders(rawBody);
 
       const lines = [`curl -X POST '${url}'`];
@@ -345,7 +422,7 @@
 
       await navigator.clipboard.writeText(lines.join(' \\\n  '));
       const output = document.getElementById('responseOutput');
-      output.textContent = "✅ Đã copy lệnh cURL vào bộ nhớ tạm! Bạn có thể dán thẳng vào Terminal / Termux để test:\n\n" + lines.join(' \\\n  ');
+      output.textContent = "✅ Đã copy lệnh cURL (đã ký tự động) vào bộ nhớ tạm:\n\n" + lines.join(' \\\n  ');
     }
 
     function downloadLogo() {
